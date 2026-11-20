@@ -214,8 +214,27 @@ class GrabModel {
   get S() { return Math.min(1, this.aspect); }
   lmax() { return P.stretch * P.radius * this.S; }
 
+  // 抓取点的"局部涂抹半径"：沿 8 个方向走到 mask 掉到 0.18 的距离，取最小值。
+  // 涂多大，影响范围就多大——涂成两小块时它们互不干扰。
+  measureRadius(u, v) {
+    const S = this.S;
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1],
+                  [0.7071, 0.7071], [-0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, -0.7071]];
+    let minR = 0.45;
+    for (const d of dirs) {
+      let r = 0;
+      for (r = 0.01; r < 0.45; r += 0.01) {
+        const uu = u + d[0] * r, vv = v + d[1] * r;
+        if (uu < 0 || uu > 1 || vv < 0 || vv > 1) break;
+        if (this.maskSample(uu, vv) < 0.18) break;
+      }
+      if (r < minR) minR = r;
+    }
+    return Math.max(0.05 * S, Math.min(minR * 1.25, 0.30 * S));
+  }
+
   radiusEff(g) {
-    const base = P.radius * this.S;
+    const base = g.localR || (P.radius * this.S);
     const d = Math.hypot(g.pull.x, g.pull.y);
     return base * (1 + CFG.radiusGrow * Math.min(1, d / this.lmax()));
   }
@@ -273,6 +292,7 @@ class GrabModel {
       pointer: { x: isoX, y: isoY },
       pull: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
       ease: 0, weight: w, released: false,
+      localR: this.measureRadius(p.x, p.y),
     };
     this.grabs.push(g);
     return g;
@@ -822,6 +842,7 @@ const state = {
   zoomed: false,
 };
 window.__GM = gm;        // 调试用：window.__GM.grabs
+window.__MASK = mask;
 window.__STATE = state;
 
 function toast(msg, ms = 1800) {
@@ -939,12 +960,12 @@ canvas.addEventListener('pointerdown', (ev) => {
   canvas.setPointerCapture(ev.pointerId);
   const p = toIso(ev);
   state.pointerId = ev.pointerId;
-  const wantPull = state.mode === 'pull' ||
-    (state.mode === 'paint' && mask.sample(p.u, p.v) > 0.35 && !ev.shiftKey);
-  if (wantPull) {
+  // 严格按模式：涂抹模式下永远不抓取，想拉扯必须切到「拉扯」
+  if (state.mode === 'pull') {
     const g = gm.tryGrab(ev.pointerId, p.x, p.y);
     if (g) { state.painting = false; state.lastPt = null; state.smoothPt = null; return; }
-    if (state.mode === 'pull') { toast('这地方还没涂软，拉不动的哦'); return; }
+    toast('这地方还没涂软，拉不动的哦');
+    return;
   }
   state.painting = true;
   state.smoothPt = null;
