@@ -100,8 +100,10 @@
     header h1{font-size:13px;gap:6px}
     header h1 em{display:none}
     #bar{
+      /* absolute 的 shrink-to-fit 遇上 wrap 会缩成一根竖条，必须给确定宽度 */
+      width: calc(100vw - 20px); max-width: 460px;
       flex-wrap:wrap; justify-content:center; gap:5px; padding:7px 8px;
-      max-width:calc(100vw - 16px); bottom:10px; border-radius:14px;
+      bottom:10px; border-radius:14px;
     }
     button{padding:7px 9px;font-size:12px;border-radius:9px}
     .sep{display:none}
