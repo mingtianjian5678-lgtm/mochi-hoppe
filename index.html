@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>もちほっぺ・Maker — 图片涂一涂就 Q 弹</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='34' r='26' fill='%23ffd7e0'/%3E%3Ccircle cx='21' cy='39' r='7' fill='%23ff8fab'/%3E%3Ccircle cx='43' cy='39' r='7' fill='%23ff8fab'/%3E%3C/svg%3E">
 <style>
@@ -94,6 +94,13 @@
   #busy.on{display:flex}
   input[type=file]{display:none}
 
+  /* 放大模式：图铺满视口，工具栏半透明浮在上面 */
+  body.zoomed #stage{border-radius:0;box-shadow:none}
+  body.zoomed canvas#gl{border-radius:0}
+  body.zoomed #bar{opacity:.35;transition:opacity .2s}
+  body.zoomed #bar:hover,body.zoomed #bar:active{opacity:1}
+  body.zoomed #hint{bottom:auto;top:14px}
+
   /* 窄屏 / 矮屏：工具栏换行，别横向溢出被裁 */
   @media (max-width: 640px), (max-height: 620px) {
     header{padding:10px 12px 0}
@@ -140,6 +147,7 @@
   <div class="sliderWrap"><label>软度</label><input id="soft" type="range" min="0" max="100" value="50"></div>
   <div class="sep"></div>
   <button id="outline">🫧 描边</button>
+  <button id="zoom" title="放大看图（再点一次还原）">🔍</button>
   <button id="shake">🌀 抖</button>
   <button id="pick">🖼 换图</button>
   <button id="gif">🎞 GIF</button>
@@ -161,7 +169,7 @@ const CFG = {
   meshMaxSegs: 192,
   imageMaxSide: 2048,
   alphaSampleMaxSide: 1024,
-  fitRatio: 0.82,
+  fitRatio: 0.92,
   dprCap: 3,
   maskSize: 512,
   maskBlur: 0.008,
@@ -811,6 +819,7 @@ const state = {
   pointerId: null,
   maskDirty: true,
   alpha: null,    // {w,h,arr}
+  zoomed: false,
 };
 window.__GM = gm;        // 调试用：window.__GM.grabs
 window.__STATE = state;
@@ -825,12 +834,19 @@ function toast(msg, ms = 1800) {
 function layout() {
   if (!renderer || !state.ready) return;
   const vw = window.innerWidth, vh = window.innerHeight;
-  const barH = (vw <= 640 || vh <= 620) ? 128 : 82;
-  const availW = vw - 32, availH = vh - barH - 24;
-  const s = Math.min((availW * CFG.fitRatio) / renderer.imageW, (availH * CFG.fitRatio) / renderer.imageH);
-  const w = Math.max(80, Math.round(renderer.imageW * s));
-  const h = Math.max(80, Math.round(renderer.imageH * s));
+  let availW, availH, ratio;
+  if (state.zoomed) {
+    availW = vw; availH = vh; ratio = 1;            // 放大：铺满整个视口
+  } else {
+    const barH = (vw <= 640 || vh <= 620) ? 134 : 88;
+    availW = vw - 24; availH = vh - barH - 16; ratio = CFG.fitRatio;
+  }
+  const baseW = renderer.imageW || 1, baseH = renderer.imageH || 1;
+  const s = Math.min((availW * ratio) / baseW, (availH * ratio) / baseH);
+  const w = Math.max(80, Math.round(baseW * s));
+  const h = Math.max(80, Math.round(baseH * s));
   renderer.resize(w, h);
+  document.body.classList.toggle('zoomed', !!state.zoomed);
   state.dirty = true;
 }
 
@@ -1053,6 +1069,13 @@ document.getElementById('outline').addEventListener('click', () => {
   toast('沿轮廓描了一圈（厚 ' + Math.round(thickness * 100) + '%）');
 });
 document.getElementById('pick').addEventListener('click', () => fileEl.click());
+document.getElementById('zoom').addEventListener('click', () => {
+  if (!state.ready) return;
+  state.zoomed = !state.zoomed;
+  document.getElementById('zoom').classList.toggle('on', state.zoomed);
+  layout();
+  toast(state.zoomed ? '放大模式 · 再点一次还原' : '已还原');
+});
 document.getElementById('save').addEventListener('click', () => {
   if (!state.ready) return;
   renderer.draw(gm, { maskView: false, bicubic: true });
