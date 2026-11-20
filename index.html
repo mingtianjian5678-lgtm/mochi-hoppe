@@ -93,6 +93,23 @@
   }
   #busy.on{display:flex}
   input[type=file]{display:none}
+
+  /* 窄屏 / 矮屏：工具栏换行，别横向溢出被裁 */
+  @media (max-width: 640px), (max-height: 620px) {
+    header{padding:10px 12px 0}
+    header h1{font-size:13px;gap:6px}
+    header h1 em{display:none}
+    #bar{
+      flex-wrap:wrap; justify-content:center; gap:5px; padding:7px 8px;
+      max-width:calc(100vw - 16px); bottom:10px; border-radius:14px;
+    }
+    button{padding:7px 9px;font-size:12px;border-radius:9px}
+    .sep{display:none}
+    .sliderWrap{padding:0 4px}
+    .sliderWrap label{font-size:10.5px}
+    input[type=range]{width:62px}
+    #hint{bottom:96px;font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -806,7 +823,8 @@ function toast(msg, ms = 1800) {
 function layout() {
   if (!renderer || !state.ready) return;
   const vw = window.innerWidth, vh = window.innerHeight;
-  const availW = vw - 40, availH = vh - 170;
+  const barH = (vw <= 640 || vh <= 620) ? 128 : 82;
+  const availW = vw - 32, availH = vh - barH - 24;
   const s = Math.min((availW * CFG.fitRatio) / renderer.imageW, (availH * CFG.fitRatio) / renderer.imageH);
   const w = Math.max(80, Math.round(renderer.imageW * s));
   const h = Math.max(80, Math.round(renderer.imageH * s));
