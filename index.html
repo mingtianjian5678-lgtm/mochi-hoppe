@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>もちほっぺ・Maker — 图片涂一涂就 Q 弹</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='34' r='26' fill='%23ffd7e0'/%3E%3Ccircle cx='21' cy='39' r='7' fill='%23ff8fab'/%3E%3Ccircle cx='43' cy='39' r='7' fill='%23ff8fab'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --pink:#ff8fab; --pink2:#ffd0dd; --ink:#3a2230;
+    --bar:rgba(255,255,255,.82);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{
+    font-family:-apple-system,"Segoe UI Variable","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, #ffe4ee 0%, rgba(255,228,238,0) 60%),
+      radial-gradient(900px 600px at 95% 110%, #e8dcff 0%, rgba(232,220,255,0) 60%),
+      #fdf4f7;
+    display:flex; flex-direction:column;
+    user-select:none;
+  }
+  header{
+    position:absolute; top:0; left:0; right:0; z-index:5;
+    padding:14px 18px 0; display:flex; align-items:center; gap:10px; pointer-events:none;
+  }
+  header h1{
+    font-size:15px; margin:0; font-weight:800; letter-spacing:.02em;
+    color:#7a4159; display:flex; align-items:center; gap:8px;
+  }
+  header h1 em{font-style:normal;font-size:11px;font-weight:600;color:#b08095;
+    background:#fff; padding:2px 7px; border-radius:99px; box-shadow:0 1px 3px rgba(180,120,150,.18)}
+  #wrap{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    z-index:1;
+  }
+  #stage{position:relative; line-height:0; border-radius:18px;
+    box-shadow:0 18px 50px -18px rgba(150,80,120,.45), 0 0 0 1px rgba(255,160,190,.25);}
+  canvas#gl{display:block; border-radius:18px; touch-action:none; cursor:none;}
+  #empty{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px;
+    border:2px dashed #f0b9cd; border-radius:18px; background:#fffafc;
+    color:#a8738c; font-size:14px; cursor:pointer; padding:24px; text-align:center;
+    width:min(78vw,520px); height:min(56vh,420px);
+  }
+  #empty b{font-size:16px;color:#7a4159}
+  #empty span{font-size:12px;color:#b98aa0}
+  #empty.hide{display:none}
+  #bar{
+    position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    z-index:6; display:flex; align-items:center; gap:6px; padding:8px 10px;
+    background:var(--bar); backdrop-filter:blur(14px) saturate(1.4);
+    border-radius:16px; box-shadow:0 10px 28px -10px rgba(160,90,130,.45), 0 0 0 1px rgba(255,255,255,.8);
+    max-width:calc(100vw - 20px); overflow-x:auto; scrollbar-width:none;
+  }
+  #bar::-webkit-scrollbar{display:none}
+  button{
+    font:inherit; font-size:12.5px; font-weight:700; color:#7a4159;
+    background:#fff; border:none; border-radius:11px; padding:8px 11px;
+    cursor:pointer; white-space:nowrap; transition:.15s transform,.15s background;
+    box-shadow:0 1px 2px rgba(160,100,130,.16);
+  }
+  button:hover{background:#fff0f5}
+  button:active{transform:scale(.96)}
+  button.on{background:linear-gradient(180deg,#ff9dbb,#ff7ba6); color:#fff;
+    box-shadow:0 4px 12px -4px rgba(255,110,160,.7)}
+  .sep{width:1px;height:20px;background:#f3d4e0;margin:0 2px;flex:none}
+  .sliderWrap{display:flex;align-items:center;gap:7px;padding:0 6px;flex:none}
+  .sliderWrap label{font-size:11px;color:#b08095;font-weight:700;white-space:nowrap}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:86px; height:4px; border-radius:9px;
+    background:linear-gradient(90deg,#ffb3cc,#ff7ba6); outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px;height:15px;border-radius:50%;
+    background:#fff; border:2px solid #ff7ba6; box-shadow:0 1px 3px rgba(200,80,120,.4); cursor:pointer;
+  }
+  #hint{
+    position:absolute; left:50%; bottom:70px; transform:translateX(-50%);
+    z-index:6; font-size:12px; color:#8a5a70; background:rgba(255,255,255,.9);
+    padding:6px 12px; border-radius:99px; box-shadow:0 4px 14px -6px rgba(160,90,130,.5);
+    opacity:0; transition:.25s opacity; pointer-events:none; white-space:nowrap;
+  }
+  #hint.show{opacity:1}
+  #busy{
+    position:absolute; inset:0; z-index:20; display:none; align-items:center; justify-content:center;
+    background:rgba(255,244,248,.85); backdrop-filter:blur(4px); font-weight:800; color:#8a4a68;
+    font-size:14px; border-radius:18px;
+  }
+  #busy.on{display:flex}
+  input[type=file]{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>もちほっぺ・Maker <em>涂一涂 · 拉一拉 · 存 GIF</em></h1>
+</header>
+
+<div id="wrap">
+  <div id="stage">
+    <canvas id="gl" width="8" height="8"></canvas>
+    <div id="empty">
+      <b>把图片拖进来</b>
+      <span>或点这里选一张 · 支持粘贴（Ctrl+V）</span>
+      <span>先「涂抹」脸颊，再「拉扯」，就 Q 弹了</span>
+    </div>
+    <div id="busy">录制中…</div>
+  </div>
+</div>
+
+<div id="bar">
+  <button data-mode="paint" class="on">🖌 涂抹</button>
+  <button data-mode="pull">✋ 拉扯</button>
+  <button data-mode="erase">🧽 擦除</button>
+  <div class="sep"></div>
+  <div class="sliderWrap"><label>笔刷</label><input id="size" type="range" min="2" max="20" value="7"></div>
+  <div class="sliderWrap"><label>软度</label><input id="soft" type="range" min="0" max="100" value="50"></div>
+  <div class="sep"></div>
+  <button id="outline">🫧 描边</button>
+  <button id="shake">🌀 抖</button>
+  <button id="pick">🖼 换图</button>
+  <button id="gif">🎞 GIF</button>
+  <button id="save">⬇ PNG</button>
+</div>
+<div id="hint"></div>
+<input id="file" type="file" accept="image/*">
+
+<script>
+"use strict";
+/* =========================================================
+   逆向自 https://sabanogames.com/entertainments/moti_hoppe_maker/app/assets/index-Cn22U7cb.js
+   配置常量逐条对应原文件的 w 对象；算法见 ../REVERSE.md
+   ========================================================= */
+
+const CFG = {
+  maxGrabs: 8,
+  meshShortSegs: 128,
+  meshMaxSegs: 192,
+  imageMaxSide: 2048,
+  alphaSampleMaxSide: 1024,
+  fitRatio: 0.82,
+  dprCap: 3,
+  maskSize: 512,
+  maskBlur: 0.008,
+  dragOmega: 80,
+  dragZeta: 0.85,
+  grabEaseMs: 60,
+  radiusGrow: 0.35,
+  substep: 1 / 240,
+  maxDt: 1 / 30,
+  settlePos: 0.001,
+  settleVel: 0.01,
+};
+
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// 软度 s∈[0,1] → 弹性参数。s 越大：拉得更长、回弹更慢、阻尼更小（抖更多下）
+function paramsOf(s) {
+  return {
+    radius: 0.22,
+    stretch: lerp(0.44, 0.66, s),
+    releaseFreq: lerp(12, 6, s),
+    releaseZeta: lerp(0.28, 0.1, s),
+    bulge: 0.1,
+  };
+}
+let P = paramsOf(0.5);
+
+// ---- 与 shader 同式的两个函数（CPU 端复算，用于反变换/命中测试）----
+const falloff = (t) => { const s = 1 - t; return s * s * s * (6 * t * t + 3 * t + 1); };
+const ring = (t) => 6.75 * t * (1 - t) * (1 - t);
+
+/* ============ 抓取模型：欠阻尼弹簧 + tanh 软限位 ============ */
+class GrabModel {
+  constructor() {
+    this.grabs = [];
+    this.aspect = 1;
+    this.maskSample = () => 1;
+    this.alphaSample = () => 1;
+    this.grabA = new Float32Array(CFG.maxGrabs * 4);
+    this.grabPull = new Float32Array(CFG.maxGrabs * 2);
+  }
+  get S() { return Math.min(1, this.aspect); }
+  lmax() { return P.stretch * P.radius * this.S; }
+
+  radiusEff(g) {
+    const base = P.radius * this.S;
+    const d = Math.hypot(g.pull.x, g.pull.y);
+    return base * (1 + CFG.radiusGrow * Math.min(1, d / this.lmax()));
+  }
+  // 60ms 线性淡入，乘上抓取瞬间烧进 grab 的 mask 权重
+  strengthOf(g) { return Math.min(1, (g.ease * 1000) / CFG.grabEaseMs) * g.weight; }
+
+  displacementAt(u, v) {
+    const ix = u * this.aspect, iy = v;
+    let dx = 0, dy = 0, wsum = 0;
+    const bulge = P.bulge;
+    for (const g of this.grabs) {
+      const st = this.strengthOf(g);
+      if (st <= 0) continue;
+      const rx = ix - g.anchor.x, ry = iy - g.anchor.y;
+      const p = Math.hypot(rx, ry);
+      const R = this.radiusEff(g);
+      const t = Math.min(1, p / R);
+      const w = falloff(t) * st;
+      const L = Math.hypot(g.pull.x, g.pull.y);
+      const nx = p > 1e-5 ? rx / p : 0;
+      const ny = p > 1e-5 ? ry / p : 0;
+      dx += w * g.pull.x + bulge * L * ring(t) * nx * st;
+      dy += w * g.pull.y + bulge * L * ring(t) * ny * st;
+      wsum += w;
+    }
+    const m = (this.maskEnabled ? this.maskSample(u, v) : 1) / Math.max(1, wsum);
+    return { x: dx * m, y: dy * m };
+  }
+
+  // 屏幕 iso 坐标 → rest 空间，3 次不动点迭代反解
+  invert(isoX, isoY) {
+    let u = isoX / this.aspect, v = isoY;
+    for (let i = 0; i < 3; i++) {
+      const d = this.displacementAt(u, v);
+      u = (isoX - d.x) / this.aspect;
+      v = isoY - d.y;
+    }
+    return { x: u, y: v };
+  }
+
+  tryGrab(pointerId, isoX, isoY) {
+    if (this.grabs.length >= CFG.maxGrabs) {
+      const i = this.grabs.findIndex(g => g.released);
+      if (i < 0) return null;
+      this.grabs.splice(i, 1);
+    }
+    const p = this.invert(isoX, isoY);
+    if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) return null;
+    if (this.alphaSample(p.x, p.y) < 0.05) return null;      // 透明处点不到
+    const w = this.maskEnabled ? this.maskSample(p.x, p.y) : 1;
+    if (w < 0.05) return null;                                // 没涂的地方拉不动
+    const g = {
+      pointerId,
+      anchor: { x: p.x * this.aspect, y: p.y },
+      pointer: { x: isoX, y: isoY },
+      pull: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+      ease: 0, weight: w, released: false,
+    };
+    this.grabs.push(g);
+    return g;
+  }
+
+  move(pointerId, isoX, isoY) {
+    const g = this.grabs.find(g => g.pointerId === pointerId && !g.released);
+    if (g) { g.pointer.x = isoX; g.pointer.y = isoY; }
+  }
+  release(pointerId) {
+    const g = this.grabs.find(g => g.pointerId === pointerId && !g.released);
+    if (g) g.released = true;
+    return g || null;
+  }
+  releaseAll() { this.grabs.length = 0; }
+  get active() { return this.grabs.length > 0; }
+
+  update(dt) {
+    if (this.grabs.length === 0) return;
+    const t = Math.min(dt, CFG.maxDt);
+    const omegaRelease = 2 * Math.PI * P.releaseFreq;
+    const R = this.lmax();
+    const posEps = CFG.settlePos * this.S;
+    const velEps = CFG.settleVel * this.S;
+
+    for (let i = this.grabs.length - 1; i >= 0; i--) {
+      const g = this.grabs[i];
+      g.ease += t;
+      let tx = 0, ty = 0;
+      if (!g.released) {
+        const dx = g.pointer.x - g.anchor.x;
+        const dy = g.pointer.y - g.anchor.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1e-9) {
+          // tanh 软限位：超过 lmax 后位移饱和，拉不断，只会越来越"紧"
+          const e = R * Math.tanh(d / R);
+          tx = dx / d * e;
+          ty = dy / d * e;
+        }
+      }
+      const w = g.released ? omegaRelease : CFG.dragOmega;
+      const z = g.released ? P.releaseZeta : CFG.dragZeta;
+
+      const n = Math.max(1, Math.ceil(t / CFG.substep));
+      const h = t / n;
+      for (let k = 0; k < n; k++) {
+        // 半隐式欧拉：a = ω²(target - x) - 2ζω·v
+        const ax = w * w * (tx - g.pull.x) - 2 * z * w * g.vel.x;
+        const ay = w * w * (ty - g.pull.y) - 2 * z * w * g.vel.y;
+        g.vel.x += ax * h; g.vel.y += ay * h;
+        g.pull.x += g.vel.x * h; g.pull.y += g.vel.y * h;
+      }
+      if (g.released &&
+          Math.hypot(g.pull.x, g.pull.y) < posEps &&
+          Math.hypot(g.vel.x, g.vel.y) < velEps) {
+        this.grabs.splice(i, 1);
+      }
+    }
+  }
+
+  fillUniforms() {
+    const n = Math.min(this.grabs.length, CFG.maxGrabs);
+    for (let i = 0; i < n; i++) {
+      const g = this.grabs[i];
+      this.grabA[i * 4] = g.anchor.x;
+      this.grabA[i * 4 + 1] = g.anchor.y;
+      this.grabA[i * 4 + 2] = this.radiusEff(g);
+      this.grabA[i * 4 + 3] = this.strengthOf(g);
+      this.grabPull[i * 2] = g.pull.x;
+      this.grabPull[i * 2 + 1] = g.pull.y;
+    }
+    return { count: n, grabA: this.grabA, grabPull: this.grabPull };
+  }
+}
+
+/* ============ 涂抹遮罩：512 画布 + 4px 高斯模糊 ============ */
+class MaskCanvas {
+  constructor() {
+    this.canvas = document.createElement('canvas');
+    this.blurCanvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d', { alpha: false, willReadFrequently: true });
+    this.blurCtx = this.blurCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+    this.blurDirty = true;
+    this.painted = false;
+    this.data = null;
+    this.canvas.width = this.canvas.height = 1;
+    this.blurCanvas.width = this.blurCanvas.height = 1;
+  }
+  setup(aspect) {
+    const t = CFG.maskSize;
+    const w = aspect >= 1 ? t : Math.max(1, Math.round(t * aspect));
+    const h = aspect >= 1 ? Math.max(1, Math.round(t / aspect)) : t;
+    this.canvas.width = w; this.canvas.height = h;
+    this.blurCanvas.width = w; this.blurCanvas.height = h;
+    this.clear();
+  }
+  ensureBlur() {
+    if (!this.blurDirty) return;
+    const { width: w, height: h } = this.canvas;
+    const r = Math.max(2, Math.round(Math.max(w, h) * CFG.maskBlur));
+    const c = this.blurCtx;
+    c.filter = 'none';
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, w, h);
+    c.filter = `blur(${r}px)`;
+    c.drawImage(this.canvas, 0, 0);
+    c.filter = 'none';
+    this.blurDirty = false;
+  }
+  textureSource() { this.ensureBlur(); return this.blurCanvas; }
+  clear() {
+    const c = this.ctx;
+    c.globalCompositeOperation = 'source-over';
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.painted = false;
+    this.invalidate();
+  }
+  invalidate() { this.blurDirty = true; this.data = null; }
+
+  // (u,v) 归一化坐标，r 归一化半径（按高度），erase=true 擦除
+  stamp(u, v, r, erase = false) {
+    const { width: w, height: h } = this.canvas;
+    const x = u * w, y = v * h, rad = Math.max(1, r * h);
+    const c = this.ctx;
+    if (erase) {
+      c.globalCompositeOperation = 'darken';
+      c.fillStyle = '#000';
+      c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fill();
+    } else {
+      // 软笔刷：平顶 + 软边（纯渐变会在密集盖章时叠出同心环纹）
+      const g = c.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, 'rgba(255,255,255,0.30)');
+      g.addColorStop(0.55, 'rgba(255,255,255,0.30)');
+      g.addColorStop(0.86, 'rgba(255,255,255,0.10)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = g;
+      c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+      this.painted = true;
+    }
+    c.globalCompositeOperation = 'source-over';
+    this.invalidate();
+  }
+
+  sample = (u, v) => {
+    if (!this.data) {
+      this.ensureBlur();
+      this.data = this.blurCtx.getImageData(0, 0, this.blurCanvas.width, this.blurCanvas.height);
+    }
+    const { data, width, height } = this.data;
+    const x = Math.min(width - 1, Math.max(0, Math.round(u * (width - 1))));
+    const y = Math.min(height - 1, Math.max(0, Math.round(v * (height - 1))));
+    return data[(y * width + x) * 4] / 255;
+  };
+
+  // 原版 presetOutline：对形状做 chamfer 距离变换，选并集外面一条等距带当遮罩
+  // 这里直接把"图片 alpha>0.5"当形状 → 沿人物/物体轮廓自动涂一圈
+  presetOutline(alphaArr, thickness = 0.12, value = 1) {
+    const { width: w, height: h } = this.canvas;
+    const n = w * h;
+    if (!alphaArr || alphaArr.length !== n) return false;
+    const INF = 1e9, D2 = Math.SQRT2;
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) d[i] = alphaArr[i] > 0.5 ? INF : 0;
+
+    // 前向扫描（chamfer 3×4 邻域）
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const i = row + x;
+        let v = d[i];
+        if (x > 0) v = Math.min(v, d[i - 1] + 1);
+        if (y > 0) {
+          v = Math.min(v, d[i - w] + 1);
+          if (x > 0) v = Math.min(v, d[i - w - 1] + D2);
+          if (x < w - 1) v = Math.min(v, d[i - w + 1] + D2);
+        }
+        d[i] = v;
+      }
+    }
+    // 后向扫描
+    for (let y = h - 1; y >= 0; y--) {
+      const row = y * w;
+      for (let x = w - 1; x >= 0; x--) {
+        const i = row + x;
+        let v = d[i];
+        if (x < w - 1) v = Math.min(v, d[i + 1] + 1);
+        if (y < h - 1) {
+          v = Math.min(v, d[i + w] + 1);
+          if (x < w - 1) v = Math.min(v, d[i + w + 1] + D2);
+          if (x > 0) v = Math.min(v, d[i + w - 1] + D2);
+        }
+        d[i] = v;
+      }
+    }
+
+    const limit = Math.max(1, thickness * h);
+    const v255 = Math.round(255 * Math.max(0, Math.min(1, value)));
+    const im = this.ctx.createImageData(w, h);
+    for (let i = 0; i < n; i++) {
+      if (d[i] > 0 && d[i] <= limit) {
+        const o = i * 4;
+        im.data[o] = v255; im.data[o + 1] = v255; im.data[o + 2] = v255; im.data[o + 3] = 255;
+      }
+    }
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    tmp.getContext('2d').putImageData(im, 0, 0);
+    const c = this.ctx;
+    c.globalCompositeOperation = 'lighten';
+    c.drawImage(tmp, 0, 0);
+    c.globalCompositeOperation = 'source-over';
+    this.painted = true;
+    this.invalidate();
+    return true;
+  }
+}
+
+/* ============ 着色器（原样复刻） ============ */
+const VS = `#version 300 es
+precision highp float;
+layout(location = 0) in vec2 aRest;
+
+uniform float uAspect;
+uniform mat3 uView;
+uniform int uGrabCount;
+uniform vec4 uGrabA[8];
+uniform vec2 uGrabPull[8];
+uniform float uBulge;
+uniform sampler2D uMask;
+uniform float uMaskEnabled;
+uniform vec2 uMaskCell;
+
+out vec2 vUV;
+
+// quintic smootherstep 的补函数：中心平坦（完全追手），边界 C2 连续地"もちっ"衰减
+float falloff(float t) {
+  float s = 1.0 - t;
+  return s * s * s * (6.0 * t * t + 3.0 * t + 1.0);
+}
+// 半格偏移 4 抽样，避免锐利遮罩边界按顶点分辨率折线化
+float maskAt(vec2 uv) {
+  vec2 h = uMaskCell * 0.5;
+  return (textureLod(uMask, uv + vec2(-h.x, -h.y), 0.0).r +
+          textureLod(uMask, uv + vec2( h.x, -h.y), 0.0).r +
+          textureLod(uMask, uv + vec2(-h.x,  h.y), 0.0).r +
+          textureLod(uMask, uv + vec2( h.x,  h.y), 0.0).r) * 0.25;
+}
+// t=1/3 处峰值 1 的环：锚点周围的向外膨胀（体积感）
+float ring(float t) {
+  return 6.75 * t * (1.0 - t) * (1.0 - t);
+}
+
+void main() {
+  vec2 iso = vec2(aRest.x * uAspect, aRest.y);
+  vec2 disp = vec2(0.0);
+  float wsum = 0.0;
+
+  for (int i = 0; i < 8; i++) {
+    if (i >= uGrabCount) break;
+    float strength = uGrabA[i].w;
+    if (strength <= 0.0) continue;
+    vec2 rel = iso - uGrabA[i].xy;
+    float d = length(rel);
+    float t = clamp(d / uGrabA[i].z, 0.0, 1.0);
+    float w = falloff(t) * strength;
+    vec2 pull = uGrabPull[i];
+    vec2 dir = d > 1e-5 ? rel / d : vec2(0.0);
+    disp += w * pull + uBulge * length(pull) * ring(t) * dir * strength;
+    wsum += w;
+  }
+
+  float m = uMaskEnabled > 0.5 ? maskAt(aRest) : 1.0;
+  disp *= m / max(1.0, wsum);
+
+  // 被拉的部分往前画，网格折叠时静止部分不会盖在拉出来的脸颊上
+  float lift = clamp(wsum, 0.0, 1.0) * m;
+
+  vec3 clip = uView * vec3(iso + disp, 1.0);
+  gl_Position = vec4(clip.xy, -0.5 * lift, 1.0);
+  vUV = aRest;
+}`;
+
+const FS = `#version 300 es
+precision mediump float;
+in vec2 vUV;
+uniform sampler2D uTex;
+uniform sampler2D uMask;
+uniform float uMaskView;
+uniform float uPass;
+uniform vec2 uTexSize;
+uniform float uBicubic;
+out vec4 outColor;
+
+vec4 cubicW(float v) {
+  vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;
+  vec4 s = n * n * n;
+  float x = s.x;
+  float y = s.y - 4.0 * s.x;
+  float z = s.z - 4.0 * s.y + 6.0 * s.x;
+  float w = 6.0 - x - y - z;
+  return vec4(x, y, z, w) * (1.0 / 6.0);
+}
+vec4 sampleImage(vec2 uv) {
+  if (uBicubic < 0.5) return texture(uTex, uv);
+  vec2 invSize = 1.0 / uTexSize;
+  vec2 coord = uv * uTexSize - 0.5;
+  vec2 fxy = fract(coord);
+  coord -= fxy;
+  vec4 xcubic = cubicW(fxy.x);
+  vec4 ycubic = cubicW(fxy.y);
+  vec4 c = coord.xxyy + vec2(-0.5, 1.5).xyxy;
+  vec4 s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw);
+  vec4 offset = (c + vec4(xcubic.yw, ycubic.yw) / s) * invSize.xxyy;
+  vec4 s0 = texture(uTex, offset.xz);
+  vec4 s1 = texture(uTex, offset.yz);
+  vec4 s2 = texture(uTex, offset.xw);
+  vec4 s3 = texture(uTex, offset.yw);
+  float sx = s.x / (s.x + s.y);
+  float sy = s.z / (s.z + s.w);
+  return mix(mix(s3, s2, sx), mix(s1, s0, sx), sy);
+}
+
+void main() {
+  vec4 c = sampleImage(vUV);
+  if (uMaskView > 0.5) {
+    if (c.a < 0.5) discard;                        // 透明处不画，留出页面背景
+    float m = texture(uMask, vUV).r;
+    float mq = floor(m * 4.0 + 0.5) / 4.0;         // 4 级量化，看得出"涂到几成"
+    c.rgb *= 0.82 + 0.18 * mq;                     // 未涂处轻压暗，涂过处恢复原亮度
+    c.rgb = mix(c.rgb, vec3(1.0, 0.64, 0.78), 0.26 * mq);   // 涂过的地方淡淡泛粉
+    c.a = 1.0;
+  } else if (uPass < 0.5) {
+    if (c.a < 0.95) discard;                      // 不透明 pass：写深度
+  } else {
+    if (c.a >= 0.95) discard;                     // 边缘 pass：不写深度，单独混合
+  }
+  outColor = c;
+}`;
+
+/* ============ 渲染器 ============ */
+class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: true });
+    if (!gl) throw new Error('WebGL2 不可用');
+    this.gl = gl;
+    this.program = this.build(VS, FS);
+    gl.useProgram(this.program);
+    this.U = {};
+    for (const n of ['uAspect','uView','uGrabCount','uGrabA','uGrabPull','uBulge',
+                     'uMask','uMaskEnabled','uMaskCell','uTex','uMaskView','uPass',
+                     'uTexSize','uBicubic']) {
+      this.U[n] = gl.getUniformLocation(this.program, n);
+    }
+    this.aspect = 1;
+    this.imageW = 1; this.imageH = 1;
+    this.mesh = null;
+    this.imageTex = this.makeTex();
+    this.maskTex = this.makeTex();
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LESS);
+  }
+  build(vsSrc, fsSrc) {
+    const gl = this.gl;
+    const sh = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        throw new Error('shader: ' + gl.getShaderInfoLog(s) + '\n' + src);
+      }
+      return s;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vsSrc));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fsSrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('link: ' + gl.getProgramInfoLog(p));
+    return p;
+  }
+  makeTex() {
+    const gl = this.gl;
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    return t;
+  }
+  setImage(img) {
+    const gl = this.gl;
+    const maxSide = CFG.imageMaxSide;
+    const s = Math.min(1, maxSide / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * s));
+    const h = Math.max(1, Math.round(img.height * s));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    this.imageW = w; this.imageH = h;
+    this.aspect = w / h;
+    gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+    this.buildMesh(c);
+  }
+  buildMesh(source) {
+    const gl = this.gl;
+    const a = this.aspect;
+    const xs = a >= 1 ? Math.min(CFG.meshMaxSegs, Math.round(CFG.meshShortSegs * a)) : CFG.meshShortSegs;
+    const ys = a >= 1 ? CFG.meshShortSegs : Math.min(CFG.meshMaxSegs, Math.round(CFG.meshShortSegs / a));
+    this.segsX = xs; this.segsY = ys;
+    const nx = xs + 1, ny = ys + 1;
+    const verts = new Float32Array(nx * ny * 2);
+    let k = 0;
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) { verts[k++] = x / xs; verts[k++] = y / ys; }
+    const idx = new Uint16Array(xs * ys * 6);
+    k = 0;
+    for (let y = 0; y < ys; y++) for (let x = 0; x < xs; x++) {
+      const p0 = y * nx + x, p1 = p0 + 1, p2 = p0 + nx, p3 = p2 + 1;
+      idx[k++] = p0; idx[k++] = p2; idx[k++] = p1;
+      idx[k++] = p1; idx[k++] = p2; idx[k++] = p3;
+    }
+    if (this.mesh) {
+      gl.deleteVertexArray(this.mesh.vao);
+      gl.deleteBuffer(this.mesh.vbo);
+      gl.deleteBuffer(this.mesh.ebo);
+    }
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    const ebo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    this.mesh = { vao, vbo, ebo, count: idx.length };
+  }
+  uploadMask(mask) {
+    const gl = this.gl;
+    const src = mask.textureSource();
+    gl.bindTexture(gl.TEXTURE_2D, this.maskTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+  }
+  resize(cssW, cssH) {
+    const dpr = Math.min(CFG.dprCap, window.devicePixelRatio || 1);
+    this.canvas.style.width = cssW + 'px';
+    this.canvas.style.height = cssH + 'px';
+    this.canvas.width = Math.round(cssW * dpr);
+    this.canvas.height = Math.round(cssH * dpr);
+    this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+  }
+  draw(gm, opts) {
+    const gl = this.gl, U = this.U;
+    gl.useProgram(this.program);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const a = this.aspect;
+    // iso(x∈[0,a], y∈[0,1]) → clip
+    gl.uniformMatrix3fv(U.uView, false, new Float32Array([
+      2 / a, 0, 0,
+      0, -2, 0,
+      -1, 1, 1,
+    ]));
+    gl.uniform1f(U.uAspect, a);
+    gl.uniform1f(U.uBulge, P.bulge);
+    gl.uniform2f(U.uMaskCell, 1 / this.segsX, 1 / this.segsY);
+    gl.uniform2f(U.uTexSize, this.imageW, this.imageH);
+
+    const u = gm.fillUniforms();
+    gl.uniform1i(U.uGrabCount, u.count);
+    gl.uniform4fv(U.uGrabA, u.grabA);
+    gl.uniform2fv(U.uGrabPull, u.grabPull);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    gl.uniform1i(U.uTex, 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.maskTex);
+    gl.uniform1i(U.uMask, 1);
+    gl.activeTexture(gl.TEXTURE0);
+
+    gl.uniform1f(U.uMaskEnabled, gm.maskEnabled ? 1 : 0);
+    gl.uniform1f(U.uMaskView, 0);
+    gl.uniform1f(U.uBicubic, opts.bicubic ? 1 : 0);
+    gl.bindVertexArray(this.mesh.vao);
+
+    // pass 0：不透明，写深度
+    gl.uniform1f(U.uPass, 0);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+
+    // pass 1：半透明边缘，不写深度
+    gl.uniform1f(U.uPass, 1);
+    gl.depthMask(false);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+
+    // 涂抹模式：叠加粉色遮罩视图（关深度：同一批几何在 LESS 下会被自己挡掉；关混合：不透明直出）
+    if (opts.maskView) {
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.BLEND);
+      gl.uniform1f(U.uPass, 0);
+      gl.uniform1f(U.uMaskView, 1);
+      gl.depthMask(false);
+      gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+      gl.uniform1f(U.uMaskView, 0);
+      gl.enable(gl.DEPTH_TEST);
+    }
+    gl.bindVertexArray(null);
+  }
+}
+
+/* ============ 应用 ============ */
+const canvas = document.getElementById('gl');
+const stage = document.getElementById('stage');
+const emptyEl = document.getElementById('empty');
+const hintEl = document.getElementById('hint');
+const fileEl = document.getElementById('file');
+const busyEl = document.getElementById('busy');
+
+const gm = new GrabModel();
+const mask = new MaskCanvas();
+let renderer = null;
+const state = {
+  mode: 'paint',
+  brush: 7,       // 高度百分比（原版 brushRadius=.07）
+  softness: 0.5,
+  ready: false,
+  aspect: 1,
+  dirty: true,
+  painting: false,
+  lastPt: null,
+  smoothPt: null,
+  pointerId: null,
+  maskDirty: true,
+  alpha: null,    // {w,h,arr}
+};
+window.__GM = gm;        // 调试用：window.__GM.grabs
+window.__STATE = state;
+
+function toast(msg, ms = 1800) {
+  hintEl.textContent = msg;
+  hintEl.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => hintEl.classList.remove('show'), ms);
+}
+
+function layout() {
+  if (!renderer || !state.ready) return;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const availW = vw - 40, availH = vh - 170;
+  const s = Math.min((availW * CFG.fitRatio) / renderer.imageW, (availH * CFG.fitRatio) / renderer.imageH);
+  const w = Math.max(80, Math.round(renderer.imageW * s));
+  const h = Math.max(80, Math.round(renderer.imageH * s));
+  renderer.resize(w, h);
+  state.dirty = true;
+}
+
+function setImage(img, autoPaint) {
+  if (!renderer) renderer = new Renderer(canvas);
+  renderer.setImage(img);
+  const a = renderer.aspect;
+  state.aspect = a;
+  gm.aspect = a;
+  mask.setup(a);
+  state.alpha = buildAlphaMap(img, mask.canvas.width, mask.canvas.height);
+  gm.maskSample = mask.sample;
+  gm.maskEnabled = true;
+  gm.alphaSample = (u, v) => sampleAlpha(state.alpha, u, v);
+  gm.releaseAll();
+  state.ready = true;
+  emptyEl.classList.add('hide');
+  layout();
+  state.dirty = true;
+  if (autoPaint) urlAutoPaint();
+  state.maskDirty = true;
+}
+
+// 原版在这里用 preset()/presetOutline() 自动涂一块；这里给左右脸颊铺个启动遮罩，方便马上玩
+function urlAutoPaint() {
+  const spots = [[0.31, 0.60], [0.69, 0.60]];
+  for (const [cx, cy] of spots) {
+    for (let i = 0; i < 3; i++) mask.stamp(cx, cy, 0.115 * (1 + i * 0.16));
+  }
+  state.maskDirty = true;
+}
+
+function buildAlphaMap(img, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const arr = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) arr[i] = d[i * 4 + 3] / 255;
+  return { w, h, arr };
+}
+function sampleAlpha(map, u, v) {
+  if (!map) return 1;
+  const x = Math.min(map.w - 1, Math.max(0, Math.round(u * (map.w - 1))));
+  const y = Math.min(map.h - 1, Math.max(0, Math.round(v * (map.h - 1))));
+  return map.arr[y * map.w + x];
+}
+
+function toIso(ev) {
+  const r = canvas.getBoundingClientRect();
+  const nx = (ev.clientX - r.left) / r.width;
+  const ny = (ev.clientY - r.top) / r.height;
+  return { x: nx * state.aspect, y: ny, u: nx, v: ny };
+}
+
+function paintAt(u, v, erase) {
+  const r = state.brush / 100;                 // 半径 = 图片高度的百分比
+  mask.stamp(u, v, r, erase);
+  state.maskDirty = true;
+}
+
+function paintSegment(a, b, erase) {
+  const r = state.brush / 100;
+  const d = Math.hypot(b.u - a.u, b.v - a.v);
+  const steps = Math.max(1, Math.ceil(d / (r * 0.15)));
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    paintAt(a.u + (b.u - a.u) * t, a.v + (b.v - a.v) * t, erase);
+  }
+}
+
+// streamline：笔迹按 0.35 追指针（原版 brushController.streamline = .35）
+const STREAMLINE = 0.35;
+function paintTo(p, erase) {
+  if (!state.smoothPt) {
+    state.smoothPt = { u: p.u, v: p.v };
+    state.lastPt = { u: p.u, v: p.v };
+    paintAt(p.u, p.v, erase);
+    return;
+  }
+  state.smoothPt.u += (p.u - state.smoothPt.u) * STREAMLINE;
+  state.smoothPt.v += (p.v - state.smoothPt.v) * STREAMLINE;
+  paintSegment(state.lastPt, state.smoothPt, erase);
+  state.lastPt = { u: state.smoothPt.u, v: state.smoothPt.v };
+}
+
+canvas.addEventListener('pointerdown', (ev) => {
+  if (!state.ready) return;
+  canvas.setPointerCapture(ev.pointerId);
+  const p = toIso(ev);
+  state.pointerId = ev.pointerId;
+  const wantPull = state.mode === 'pull' ||
+    (state.mode === 'paint' && mask.sample(p.u, p.v) > 0.35 && !ev.shiftKey);
+  if (wantPull) {
+    const g = gm.tryGrab(ev.pointerId, p.x, p.y);
+    if (g) { state.painting = false; state.lastPt = null; state.smoothPt = null; return; }
+    if (state.mode === 'pull') { toast('这地方还没涂软，拉不动的哦'); return; }
+  }
+  state.painting = true;
+  state.smoothPt = null;
+  paintTo(p, state.mode === 'erase');
+});
+
+canvas.addEventListener('pointermove', (ev) => {
+  if (!state.ready) return;
+  const p = toIso(ev);
+  if (gm.active && gm.grabs.some(g => g.pointerId === ev.pointerId && !g.released)) {
+    gm.move(ev.pointerId, p.x, p.y);
+    state.dirty = true;
+    return;
+  }
+  if (state.painting) {
+    paintTo(p, state.mode === 'erase');
+    state.dirty = true;
+  }
+});
+
+function endPointer(ev) {
+  if (!state.ready) return;
+  gm.release(ev.pointerId);
+  state.painting = false;
+  state.lastPt = null;
+  state.smoothPt = null;
+  state.dirty = true;
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('pointerleave', (ev) => { if (ev.buttons === 0) endPointer(ev); });
+
+// ---- 光标圈 ----
+const cursorEl = document.createElement('div');
+Object.assign(cursorEl.style, {
+  position: 'fixed', pointerEvents: 'none', zIndex: 9, borderRadius: '50%',
+  border: '2px solid rgba(255,255,255,.9)',
+  boxShadow: '0 0 0 1px rgba(255,110,160,.55), 0 2px 8px rgba(120,50,80,.25)',
+  transform: 'translate(-50%,-50%)', display: 'none', mixBlendMode: 'normal',
+});
+document.body.appendChild(cursorEl);
+canvas.addEventListener('pointerenter', () => { if (state.ready) cursorEl.style.display = 'block'; });
+canvas.addEventListener('pointerleave', () => { cursorEl.style.display = 'none'; });
+canvas.addEventListener('pointermove', (ev) => {
+  const r = canvas.getBoundingClientRect();
+  const d = (state.brush / 100) * r.height * 2;
+  cursorEl.style.width = d + 'px';
+  cursorEl.style.height = d + 'px';
+  cursorEl.style.left = ev.clientX + 'px';
+  cursorEl.style.top = ev.clientY + 'px';
+});
+
+// ---- 主循环 ----
+let last = performance.now();
+let maskDirtyUploaded = true;
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, CFG.maxDt);
+  last = now;
+  if (state.ready) {
+    if (gm.active) {
+      gm.update(dt);
+      state.dirty = true;
+    }
+    if (state.maskDirty && mask.painted) {
+      renderer.uploadMask(mask);
+      state.maskDirty = false;
+      state.dirty = true;
+    }
+    if (state.dirty) {
+      renderer.draw(gm, {
+        maskView: state.mode !== 'pull',
+        bicubic: true,
+      });
+      state.dirty = false;
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---- UI ----
+document.querySelectorAll('#bar button[data-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#bar button[data-mode]').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    state.mode = btn.dataset.mode;
+    gm.releaseAll();
+    state.dirty = true;
+  });
+});
+document.getElementById('size').addEventListener('input', (e) => {
+  state.brush = +e.target.value;
+});
+document.getElementById('soft').addEventListener('input', (e) => {
+  state.softness = +e.target.value / 100;
+  P = paramsOf(state.softness);
+  state.dirty = true;
+});
+document.getElementById('shake').addEventListener('click', () => {
+  if (!state.ready) return;
+  // 在涂抹区域插一堆随机初速度，模拟"戳一下"
+  const n = 2;
+  for (let i = 0; i < n; i++) {
+    const u = 0.2 + Math.random() * 0.6;
+    const v = 0.2 + Math.random() * 0.6;
+    if (mask.sample(u, v) < 0.15) continue;
+    const g = gm.tryGrab('shake' + i, u * state.aspect, v);
+    if (g) {
+      g.pointer.x = g.anchor.x + (Math.random() - 0.5) * 0.05;
+      g.pointer.y = g.anchor.y + (Math.random() - 0.5) * 0.05;
+      gm.release('shake' + i);
+    }
+  }
+});
+document.getElementById('outline').addEventListener('click', () => {
+  if (!state.ready || !state.alpha) return;
+  const thickness = Math.max(0.04, (state.brush / 100) * 2);
+  const ok = mask.presetOutline(state.alpha.arr, thickness, 1);
+  if (!ok) { toast('这张图没有透明边界，描不了'); return; }
+  state.maskDirty = true;
+  state.dirty = true;
+  toast('沿轮廓描了一圈（厚 ' + Math.round(thickness * 100) + '%）');
+});
+document.getElementById('pick').addEventListener('click', () => fileEl.click());
+document.getElementById('save').addEventListener('click', () => {
+  if (!state.ready) return;
+  renderer.draw(gm, { maskView: false, bicubic: true });
+  canvas.toBlob((b) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'mochi-hoppe.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+});
+
+// ===== GIF 录制（gifenc 内联 worker，6 秒 / 30fps）=====
+// 原版 gifWorker-1iE3K5ao.js 整体内联，把它的 onmessage 换成流式协议，避免一次攒 180 帧 RGBA
+const GIF_WORKER_SRC = "(function(){\"use strict\";var Y={trailer:59};function P(t=256){let r=0,f=new Uint8Array(t);return{get buffer(){return f.buffer},reset(){r=0},bytesView(){return f.subarray(0,r)},bytes(){return f.slice(0,r)},writeByte(a){n(r+1),f[r]=a,r++},writeBytes(a,i=0,l=a.length){n(r+l);for(let o=0;o<l;o++)f[r++]=a[o+i]},writeBytesView(a,i=0,l=a.byteLength){n(r+l),f.set(a.subarray(i,i+l),r),r+=l}};function n(a){var i=f.length;if(i>=a)return;var l=1024*1024;a=Math.max(a,i*(i<l?2:1.125)>>>0),i!=0&&(a=Math.max(a,256));let o=f;f=new Uint8Array(a),r>0&&f.set(o.subarray(0,r),0)}}var I=12,_=5003,Z=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];function $(t,r,f,n,a=P(512),i=new Uint8Array(256),l=new Int32Array(_),o=new Int32Array(_)){let u=l.length,w=Math.max(2,n);i.fill(0),o.fill(0),l.fill(-1);let c=0,e=0,h=w+1,x=h,y=!1,m=x,s=(1<<m)-1,B=1<<h-1,d=B+1,p=B+2,b=0,M=f[0],C=0;for(let A=u;A<65536;A*=2)++C;C=8-C,a.writeByte(w),U(B);let g=f.length;for(let A=1;A<g;A++)t:{let V=f[A],E=(V<<I)+M,v=V<<C^M;if(l[v]===E){M=o[v];break t}let D=v===0?1:u-v;for(;l[v]>=0;)if(v-=D,v<0&&(v+=u),l[v]===E){M=o[v];break t}U(M),M=V,p<1<<I?(o[v]=p++,l[v]=E):(l.fill(-1),p=B+2,y=!0,U(B))}return U(M),U(d),a.writeByte(0),a.bytesView();function U(A){for(c&=Z[e],e>0?c|=A<<e:c=A,e+=m;e>=8;)i[b++]=c&255,b>=254&&(a.writeByte(b),a.writeBytesView(i,0,b),b=0),c>>=8,e-=8;if((p>s||y)&&(y?(m=x,s=(1<<m)-1,y=!1):(++m,s=m===I?1<<m:(1<<m)-1)),A==d){for(;e>0;)i[b++]=c&255,b>=254&&(a.writeByte(b),a.writeBytesView(i,0,b),b=0),c>>=8,e-=8;b>0&&(a.writeByte(b),a.writeBytesView(i,0,b),b=0)}}}var W=$;function j(t,r,f){return t<<8&63488|r<<2&992|f>>3}function J(t,r,f,n){return t>>4|r&240|(f&240)<<4|(n&240)<<8}function K(t,r,f){return t>>4<<8|r&240|f>>4}function F(t,r,f){return t<r?r:t>f?f:t}function R(t){return t*t}function N(t,r,f){var n=0,a=1e100;let i=t[r],l=i.cnt;i.ac;let o=i.rc,u=i.gc,w=i.bc;for(var c=i.fw;c!=0;c=t[c].fw){let h=t[c],x=h.cnt,y=l*x/(l+x);if(!(y>=a)){var e=0;e+=y*R(h.rc-o),!(e>=a)&&(e+=y*R(h.gc-u),!(e>=a)&&(e+=y*R(h.bc-w),!(e>=a)&&(a=e,n=c)))}}i.err=a,i.nn=n}function S(){return{ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0}}function tt(t,r){let f=r===\"rgb444\"?4096:65536,n=new Array(f),a=t.length;if(r===\"rgba4444\")for(let i=0;i<a;++i){let l=t[i],o=l>>24&255,u=l>>16&255,w=l>>8&255,c=l&255,e=J(c,w,u,o),h=e in n?n[e]:n[e]=S();h.rc+=c,h.gc+=w,h.bc+=u,h.ac+=o,h.cnt++}else if(r===\"rgb444\")for(let i=0;i<a;++i){let l=t[i],o=l>>16&255,u=l>>8&255,w=l&255,c=K(w,u,o),e=c in n?n[c]:n[c]=S();e.rc+=w,e.gc+=u,e.bc+=o,e.cnt++}else for(let i=0;i<a;++i){let l=t[i],o=l>>16&255,u=l>>8&255,w=l&255,c=j(w,u,o),e=c in n?n[c]:n[c]=S();e.rc+=w,e.gc+=u,e.bc+=o,e.cnt++}return n}function et(t,r,f={}){let{format:n=\"rgb565\",clearAlpha:a=!0,clearAlphaColor:i=0,clearAlphaThreshold:l=0,oneBitAlpha:o=!1}=f;if(!t||!t.buffer)throw new Error(\"quantize() expected RGBA Uint8Array data\");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error(\"quantize() expected RGBA Uint8Array data\");let u=new Uint32Array(t.buffer),w=f.useSqrt!==!1,c=n===\"rgba4444\",e=tt(u,n),h=e.length,x=h-1,y=new Uint32Array(h+1);for(var m=0,s=0;s<h;++s){let k=e[s];if(k!=null){var B=1/k.cnt;c&&(k.ac*=B),k.rc*=B,k.gc*=B,k.bc*=B,e[m++]=k}}R(r)/m<.022&&(w=!1);for(var s=0;s<m-1;++s)e[s].fw=s+1,e[s+1].bk=s,w&&(e[s].cnt=Math.sqrt(e[s].cnt));w&&(e[s].cnt=Math.sqrt(e[s].cnt));var d,p,b;for(s=0;s<m;++s){N(e,s);var M=e[s].err;for(p=++y[0];p>1&&(b=p>>1,!(e[d=y[b]].err<=M));p=b)y[p]=d;y[p]=s}var C=m-r;for(s=0;s<C;){for(var g;;){var U=y[1];if(g=e[U],g.tm>=g.mtm&&e[g.nn].mtm<=g.tm)break;g.mtm==x?U=y[1]=y[y[0]--]:(N(e,U),g.tm=s);var M=e[U].err;for(p=1;(b=p+p)<=y[0]&&(b<y[0]&&e[y[b]].err>e[y[b+1]].err&&b++,!(M<=e[d=y[b]].err));p=b)y[p]=d;y[p]=U}var A=e[g.nn],V=g.cnt,E=A.cnt,B=1/(V+E);c&&(g.ac=B*(V*g.ac+E*A.ac)),g.rc=B*(V*g.rc+E*A.rc),g.gc=B*(V*g.gc+E*A.gc),g.bc=B*(V*g.bc+E*A.bc),g.cnt+=A.cnt,g.mtm=++s,e[A.bk].fw=A.fw,e[A.fw].bk=A.bk,A.mtm=x}let v=[];var D=0;for(s=0;;++D){let k=F(Math.round(e[s].rc),0,255),H=F(Math.round(e[s].gc),0,255),L=F(Math.round(e[s].bc),0,255),G=255;c&&(G=F(Math.round(e[s].ac),0,255),o&&(G=G<=(typeof o==\"number\"?o:127)?0:255),a&&G<=l&&(k=H=L=i,G=0));let X=c?[k,H,L,G]:[k,H,L];if(rt(v,X)||v.push(X),(s=e[s].fw)==0)break}return v}function rt(t,r){for(let f=0;f<t.length;f++){let n=t[f],a=n[0]===r[0]&&n[1]===r[1]&&n[2]===r[2],i=n.length>=4&&r.length>=4?n[3]===r[3]:!0;if(a&&i)return!0}return!1}function nt(t,r,f=\"rgb565\"){if(!t||!t.buffer)throw new Error(\"quantize() expected RGBA Uint8Array data\");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error(\"quantize() expected RGBA Uint8Array data\");if(r.length>256)throw new Error(\"applyPalette() only works with 256 colors or less\");let n=new Uint32Array(t.buffer),a=n.length,i=f===\"rgb444\"?4096:65536,l=new Uint8Array(a),o=new Array(i);if(f===\"rgba4444\")for(let u=0;u<a;u++){let w=n[u],c=w>>24&255,e=w>>16&255,h=w>>8&255,x=w&255,y=J(x,h,e,c),m=y in o?o[y]:o[y]=at(x,h,e,c,r);l[u]=m}else{let u=f===\"rgb444\"?K:j;for(let w=0;w<a;w++){let c=n[w],e=c>>16&255,h=c>>8&255,x=c&255,y=u(x,h,e),m=y in o?o[y]:o[y]=it(x,h,e,r);l[w]=m}}return l}function at(t,r,f,n,a){let i=0,l=1e100;for(let o=0;o<a.length;o++){let u=a[o],w=u[3],c=z(w-n);if(c>l)continue;let e=u[0];if(c+=z(e-t),c>l)continue;let h=u[1];if(c+=z(h-r),c>l)continue;let x=u[2];c+=z(x-f),!(c>l)&&(l=c,i=o)}return i}function it(t,r,f,n){let a=0,i=1e100;for(let l=0;l<n.length;l++){let o=n[l],u=o[0],w=z(u-t);if(w>i)continue;let c=o[1];if(w+=z(c-r),w>i)continue;let e=o[2];w+=z(e-f),!(w>i)&&(i=w,a=l)}return a}function z(t){return t*t}function lt(t={}){let{initialCapacity:r=4096,auto:f=!0}=t,n=P(r),a=5003,i=new Uint8Array(256),l=new Int32Array(a),o=new Int32Array(a),u=!1;return{reset(){n.reset(),u=!1},finish(){n.writeByte(Y.trailer)},bytes(){return n.bytes()},bytesView(){return n.bytesView()},get buffer(){return n.buffer},get stream(){return n},writeHeader:w,writeFrame(c,e,h,x={}){let{transparent:y=!1,transparentIndex:m=0,delay:s=0,palette:B=null,repeat:d=0,colorDepth:p=8,dispose:b=-1}=x,M=!1;if(f?u||(M=!0,w(),u=!0):M=!!x.first,e=Math.max(0,Math.floor(e)),h=Math.max(0,Math.floor(h)),M){if(!B)throw new Error(\"First frame must include a { palette } option\");ct(n,e,h,B,p),O(n,B),d>=0&&ot(n,d)}let C=Math.round(s/10);ft(n,b,C,y,m);let g=!!B&&!M;wt(n,e,h,g?B:null),g&&O(n,B),ut(n,c,e,h,p,i,l,o)}};function w(){Q(n,\"GIF89a\")}}function ft(t,r,f,n,a){t.writeByte(33),t.writeByte(249),t.writeByte(4),a<0&&(a=0,n=!1);var i,l;n?(i=1,l=2):(i=0,l=0),r>=0&&(l=r&7),l<<=2,t.writeByte(0|l|0|i),q(t,f),t.writeByte(a||0),t.writeByte(0)}function ct(t,r,f,n,a=8){let i=1,l=0,o=T(n.length)-1,u=i<<7|a-1<<4|l<<3|o;q(t,r),q(t,f),t.writeBytes([u,0,0])}function ot(t,r){t.writeByte(33),t.writeByte(255),t.writeByte(11),Q(t,\"NETSCAPE2.0\"),t.writeByte(3),t.writeByte(1),q(t,r),t.writeByte(0)}function O(t,r){let f=1<<T(r.length);for(let n=0;n<f;n++){let a=[0,0,0];n<r.length&&(a=r[n]),t.writeByte(a[0]),t.writeByte(a[1]),t.writeByte(a[2])}}function wt(t,r,f,n){if(t.writeByte(44),q(t,0),q(t,0),q(t,r),q(t,f),n){let a=0,i=0,l=T(n.length)-1;t.writeByte(128|a|i|0|l)}else t.writeByte(0)}function ut(t,r,f,n,a=8,i,l,o){W(f,n,r,a,t,i,l,o)}function q(t,r){t.writeByte(r&255),t.writeByte(r>>8&255)}function Q(t,r){for(var f=0;f<r.length;f++)t.writeByte(r.charCodeAt(f))}function T(t){return Math.max(Math.ceil(Math.log2(t)),1)};var __enc=null,__n=0;\nself.onmessage=function(e){var d=e.data;try{\nif(d.type==='frame'){var u=new Uint8Array(d.buffer),pal=et(u,256),ix=nt(u,pal);\nif(!__enc)__enc=lt();\n__enc.writeFrame(ix,d.width,d.height,{palette:pal,delay:d.delay});__n++;\nself.postMessage({type:'progress',n:__n});\n}else if(d.type==='end'){if(!__enc)throw new Error('没有帧');\n__enc.finish();var l=__enc.bytes();\nself.postMessage({type:'done',bytes:l},[l.buffer]);\n}}catch(err){self.postMessage({type:'error',message:String((err&&err.message)||err)});}};\n})();";
+
+let gifBusy = false;
+function hintShow(msg) {
+  hintEl.textContent = msg;
+  hintEl.classList.add('show');
+  clearTimeout(toast._t);
+}
+function hintHide() { hintEl.classList.remove('show'); }
+
+function recordGif() {
+  if (!state.ready || gifBusy) return;
+  gifBusy = true;
+
+  const fps = 30, dur = 6, maxSide = 380;
+  const a = state.aspect;
+  const W = Math.max(2, Math.round(a >= 1 ? maxSide : maxSide * a));
+  const H = Math.max(2, Math.round(a >= 1 ? maxSide / a : maxSide));
+  const c2 = document.createElement('canvas');
+  c2.width = W; c2.height = H;
+  const ctx2 = c2.getContext('2d', { willReadFrequently: true });
+
+  const workerUrl = URL.createObjectURL(new Blob([GIF_WORKER_SRC], { type: 'text/javascript' }));
+  const worker = new Worker(workerUrl);
+  const total = Math.round(fps * dur);
+  const delay = Math.round(1000 / fps);
+  let frame = 0, lastCap = -1e9;
+
+  const cleanup = () => {
+    worker.terminate();
+    URL.revokeObjectURL(workerUrl);
+    gifBusy = false;
+    hintHide();
+  };
+
+  worker.onmessage = (e) => {
+    const d = e.data;
+    if (d.type === 'done') {
+      const blob = new Blob([d.bytes], { type: 'image/gif' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'mochi-hoppe.gif';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      cleanup();
+      toast('GIF 存好了（' + Math.round(d.bytes.length / 1024) + ' KB）');
+    } else if (d.type === 'error') {
+      cleanup();
+      toast('GIF 编码失败');
+      console.error(d.message);
+    }
+  };
+  worker.onerror = (err) => { console.error(err); cleanup(); toast('GIF 编码失败'); };
+
+  const t0 = performance.now();
+  function tick(now) {
+    const el = now - t0;
+    hintShow(`🎞 录制中 ${(Math.min(el, dur * 1000) / 1000).toFixed(1)} / ${dur}s`);
+    if (el - lastCap >= 1000 / fps - 3) {
+      ctx2.clearRect(0, 0, W, H);
+      ctx2.drawImage(canvas, 0, 0, W, H);
+      const img = ctx2.getImageData(0, 0, W, H);
+      const buf = new Uint8Array(img.data);
+      worker.postMessage({ type: 'frame', width: W, height: H, delay, buffer: buf.buffer }, [buf.buffer]);
+      lastCap = el;
+      frame++;
+    }
+    if (frame < total) {
+      requestAnimationFrame(tick);
+    } else {
+      hintShow('🎞 正在编码 GIF…');
+      worker.postMessage({ type: 'end' });
+    }
+  }
+  // 先抖一下，录出来就有东西
+  setTimeout(() => document.getElementById('shake').click(), 350);
+  requestAnimationFrame(tick);
+}
+document.getElementById('gif').addEventListener('click', recordGif);
+
+// ---- 载入图片 ----
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  // 必须走 dataURL：blob: URL 的图在 file:// 页面里会污染 canvas，
+  // 之后的 getImageData / toBlob（描边、GIF、存图）会直接抛 SecurityError
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => setImage(img);
+    img.onerror = () => toast('这张图读不出来');
+    img.src = fr.result;
+  };
+  fr.onerror = () => toast('读文件失败');
+  fr.readAsDataURL(file);
+}
+fileEl.addEventListener('change', (e) => loadFile(e.target.files[0]));
+emptyEl.addEventListener('click', () => fileEl.click());
+window.addEventListener('dragover', (e) => { e.preventDefault(); });
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  loadFile(f);
+});
+window.addEventListener('paste', (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const it of items) {
+    if (it.type.startsWith('image/')) { loadFile(it.getAsFile()); break; }
+  }
+});
+window.addEventListener('resize', layout);
+
+// ---- 起手示例图（程序画的圆脸）----
+(function sample() {
+  const S = 720;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(S * .5, S * .42, S * .05, S * .5, S * .5, S * .55);
+  g.addColorStop(0, '#fff3e0');
+  g.addColorStop(1, '#ffd9c8');
+  x.fillStyle = g;
+  x.beginPath(); x.arc(S * .5, S * .5, S * .40, 0, Math.PI * 2); x.fill();
+  // 耳
+  x.fillStyle = '#ffcfc0';
+  for (const sx of [-1, 1]) {
+    x.beginPath();
+    x.ellipse(S * (.5 + sx * .27), S * .22, S * .09, S * .12, sx * 0.4, 0, Math.PI * 2);
+    x.fill();
+  }
+  // 腮红
+  x.fillStyle = 'rgba(255,140,175,.55)';
+  for (const sx of [-1, 1]) {
+    x.beginPath(); x.ellipse(S * (.5 + sx * .21), S * .60, S * .085, S * .055, 0, 0, Math.PI * 2); x.fill();
+  }
+  // 眼
+  x.fillStyle = '#3a2230';
+  for (const sx of [-1, 1]) {
+    x.beginPath(); x.ellipse(S * (.5 + sx * .13), S * .47, S * .035, S * .045, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#fff';
+    x.beginPath(); x.arc(S * (.5 + sx * .13 - .012), S * .455, S * .012, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#3a2230';
+  }
+  // 嘴
+  x.strokeStyle = '#3a2230'; x.lineWidth = S * .008; x.lineCap = 'round';
+  x.beginPath(); x.arc(S * .5, S * .55, S * .045, 0.25 * Math.PI, 0.75 * Math.PI); x.stroke();
+  const img = new Image();
+  img.onload = () => setImage(img, true);
+  img.src = c.toDataURL('image/png');
+})();
+</script>
+</body>
+</html>
